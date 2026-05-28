@@ -272,13 +272,59 @@ p { margin: 0; }
   .setup-side { position: sticky; top: 24px; }
 }
 
-/* Chapter picker — grid of buttons */
+/* Preset quick-picks (multi-chapter shortcuts) */
+.preset-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.preset-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: all 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+.preset-btn:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.preset-btn:active { transform: scale(0.98); }
+.preset-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.preset-btn__title { font-size: 13px; font-weight: 500; color: var(--text); }
+.preset-btn.is-active .preset-btn__title { color: var(--accent-strong); }
+.preset-btn__sub { font-size: 11px; color: var(--text-3); }
+.preset-btn.is-active .preset-btn__sub { color: var(--accent); opacity: 0.85; }
+.preset-btn--exam {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+}
+.preset-btn--exam .preset-btn__title { color: var(--accent-ink); }
+.preset-btn--exam .preset-btn__sub { color: var(--accent-ink); opacity: 0.85; }
+.preset-btn--exam:hover { filter: brightness(1.05); background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%); }
+.preset-btn--exam.is-active { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+
+/* Chapter picker — grid of multi-select buttons */
+.chapter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.chapter-toolbar__count { font-size: 12px; color: var(--text-2); }
+.chapter-toolbar__count strong { color: var(--accent); font-weight: 500; }
+.chapter-toolbar__actions { display: flex; gap: 2px; }
+
 .chapter-picker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
 }
 .chapter-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -292,11 +338,32 @@ p { margin: 0; }
   -webkit-tap-highlight-color: transparent;
 }
 .chapter-btn:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.chapter-btn:active { transform: scale(0.98); }
 .chapter-btn.is-active {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent-strong);
 }
+.chapter-btn__check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition: all 0.15s var(--ease);
+}
+.chapter-btn.is-active .chapter-btn__check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.chapter-btn__check .icon { width: 12px; height: 12px; stroke-width: 3; }
 .chapter-btn__num {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -309,6 +376,7 @@ p { margin: 0; }
   font-weight: 500;
   line-height: 1.3;
   margin-bottom: 4px;
+  padding-right: 22px;
 }
 .chapter-btn__count {
   font-size: 11px;
@@ -316,25 +384,6 @@ p { margin: 0; }
   margin-top: auto;
 }
 .chapter-btn.is-active .chapter-btn__count { color: var(--accent); opacity: 0.8; }
-.chapter-btn--all {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 56px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-  border-color: transparent;
-  color: var(--accent-ink);
-}
-.chapter-btn--all:hover { filter: brightness(1.05); }
-.chapter-btn--all.is-active {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-  color: var(--accent-ink);
-  outline: 3px solid var(--accent-soft);
-  outline-offset: 2px;
-}
-.chapter-btn--all .chapter-btn__title { font-size: 15px; margin: 0; font-family: var(--font-serif); }
-.chapter-btn--all .chapter-btn__count { color: var(--accent-ink); opacity: 0.85; font-size: 13px; margin: 0; }
 
 /* Setup side cards */
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
@@ -995,7 +1044,19 @@ p { margin: 0; }
         <div class="setup-main">
 
           <section class="card">
-            <h2>Chapter</h2>
+            <h2>Quick picks</h2>
+            <div class="preset-row" id="presetRow"></div>
+          </section>
+
+          <section class="card">
+            <h2>Chapters</h2>
+            <div class="chapter-toolbar">
+              <span class="chapter-toolbar__count" id="chapterCount">All chapters</span>
+              <span class="chapter-toolbar__actions">
+                <button class="btn btn--text" data-action="select-all-chapters">Select all</button>
+                <button class="btn btn--text" data-action="clear-chapters">Clear</button>
+              </span>
+            </div>
             <div class="chapter-picker" id="chapterPicker"></div>
           </section>
 
@@ -1238,6 +1299,16 @@ const CHAPTER_TITLES = {
   17: "Protection"
 };
 
+/* Quick-pick presets — each selects a set of chapters in one tap.
+   "Endterm" bundles exactly the chapters the end-term exam draws from. */
+const PRESETS = [
+  { id: "endterm",  label: "Endterm",        sub: "Memory · Files · Security",   chapters: [9, 10, 13, 14, 15, 16], exam: true },
+  { id: "memory",   label: "Memory",         sub: "Ch 9–10",                     chapters: [9, 10] },
+  { id: "files",    label: "File systems",   sub: "Ch 13–15",                    chapters: [13, 14, 15] },
+  { id: "security", label: "Security",       sub: "Ch 16",                       chapters: [16] },
+  { id: "untested", label: "Not yet tested", sub: "Final prep · the rest",       chapters: [1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 17] }
+];
+
 /* ============================================================
    STORAGE
    ============================================================ */
@@ -1273,7 +1344,7 @@ function defaultState() {
     seen: new Set(),
     correctEver: new Set(),
     filters: {
-      chapter: "all",
+      chapters: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
       types: ["mc", "tf"],
       difficulties: ["Easy", "Medium", "Hard"],
       mode: "study"
@@ -1287,13 +1358,24 @@ function defaultState() {
    ============================================================ */
 let state = (function() {
   const raw = loadState();
+  const filters = raw.filters || defaultState().filters;
+  // Migration: older versions stored a single `chapter` ("all" or a number).
+  // Convert it to the new multi-select `chapters` array.
+  if (!Array.isArray(filters.chapters)) {
+    if (filters.chapter === "all" || filters.chapter == null) {
+      filters.chapters = defaultState().filters.chapters.slice();
+    } else {
+      filters.chapters = [parseInt(filters.chapter)];
+    }
+  }
+  delete filters.chapter;
   // Re-hydrate Sets from arrays
   return {
     bookmarks: new Set(raw.bookmarks || []),
     wrong: new Set(raw.wrong || []),
     seen: new Set(raw.seen || []),
     correctEver: new Set(raw.correctEver || []),
-    filters: raw.filters || defaultState().filters,
+    filters: filters,
     session: raw.session || null
   };
 })();
@@ -1330,11 +1412,32 @@ function chapterCount(ch, type) {
   return list.filter(q => q.type === type).length;
 }
 
+/* All chapter numbers that actually have questions, sorted ascending. */
+function availableChapters() {
+  return Object.keys(Q_BY_CHAPTER).map(Number).sort((a, b) => a - b);
+}
+
+function isChapterSelected(ch) {
+  return state.filters.chapters.includes(ch);
+}
+
+function allChaptersSelected() {
+  return availableChapters().every(ch => isChapterSelected(ch));
+}
+
+/* Returns the id of the preset whose chapter set exactly matches the current
+   selection, or null if the selection doesn't match any preset. */
+function activePresetId() {
+  const sel = state.filters.chapters.slice().sort((a, b) => a - b).join(",");
+  for (const p of PRESETS) {
+    if (p.chapters.slice().sort((a, b) => a - b).join(",") === sel) return p.id;
+  }
+  return null;
+}
+
 function filteredQuestions() {
-  const { chapter, types, difficulties, mode } = state.filters;
-  let pool;
-  if (chapter === "all") pool = QUESTIONS.slice();
-  else pool = (Q_BY_CHAPTER[chapter] || []).slice();
+  const { chapters, types, difficulties, mode } = state.filters;
+  let pool = QUESTIONS.filter(q => chapters.includes(q.chapter));
   pool = pool.filter(q => types.includes(q.type) && difficulties.includes(q.difficulty));
   if (mode === "review") pool = pool.filter(q => state.wrong.has(q.id));
   return pool;
@@ -1375,31 +1478,54 @@ function showView(name) {
 /* ============================================================
    SETUP VIEW
    ============================================================ */
+function renderPresets() {
+  const root = $("#presetRow");
+  if (!root) return;
+  const active = activePresetId();
+  root.innerHTML = PRESETS.map(p => {
+    const n = QUESTIONS.filter(q => p.chapters.includes(q.chapter)).length;
+    const isActive = active === p.id;
+    return `
+      <button class="preset-btn ${p.exam ? 'preset-btn--exam' : ''} ${isActive ? 'is-active' : ''}" data-preset="${p.id}">
+        <span class="preset-btn__title">${escapeHtml(p.label)}</span>
+        <span class="preset-btn__sub">${p.chapters.length} ch · ${n} Q</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderChapterToolbar() {
+  const el = $("#chapterCount");
+  if (!el) return;
+  const sel = state.filters.chapters.length;
+  const totalCh = availableChapters().length;
+  const totalQ = filteredQuestions().length;
+  if (sel === 0) {
+    el.innerHTML = "No chapters selected";
+  } else if (sel === totalCh) {
+    el.innerHTML = `<strong>All ${totalCh}</strong> chapters · ${totalQ} questions`;
+  } else {
+    el.innerHTML = `<strong>${sel}</strong> of ${totalCh} chapters · ${totalQ} questions`;
+  }
+}
+
+const CHECK_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
 function renderChapterPicker() {
   const root = $("#chapterPicker");
-  const totalAll = QUESTIONS.length;
   let html = "";
 
-  // "All chapters" mega-button
-  html += `
-    <button class="chapter-btn chapter-btn--all ${state.filters.chapter === 'all' ? 'is-active' : ''}" data-chapter="all">
-      <span>
-        <span class="chapter-btn__title">All chapters</span>
-      </span>
-      <span class="chapter-btn__count">${totalAll} questions · shuffled</span>
-    </button>
-  `;
-
-  // Individual chapters
+  // Individual chapters — multi-select toggles
   for (let ch = 1; ch <= 17; ch++) {
     const list = Q_BY_CHAPTER[ch] || [];
     if (list.length === 0) continue;
     const mc = list.filter(q => q.type === "mc").length;
     const tf = list.filter(q => q.type === "tf").length;
-    const isActive = state.filters.chapter === ch;
+    const isActive = isChapterSelected(ch);
     const title = CHAPTER_TITLES[ch] || `Chapter ${ch}`;
     html += `
-      <button class="chapter-btn ${isActive ? 'is-active' : ''}" data-chapter="${ch}">
+      <button class="chapter-btn ${isActive ? 'is-active' : ''}" data-chapter="${ch}" role="checkbox" aria-checked="${isActive}">
+        <span class="chapter-btn__check">${CHECK_SVG}</span>
         <span class="chapter-btn__num">Chapter ${ch}</span>
         <span class="chapter-btn__title">${escapeHtml(title)}</span>
         <span class="chapter-btn__count">${list.length} · ${mc} MC + ${tf} T/F</span>
@@ -1444,7 +1570,9 @@ function renderSetupStats() {
 }
 
 function renderSetup() {
+  renderPresets();
   renderChapterPicker();
+  renderChapterToolbar();
   renderChips();
   renderSetupStats();
 }
@@ -1653,7 +1781,7 @@ function renderStudySidebar() {
   const q = currentQuestion();
   if (!q) return;
   let html = `
-    <button class="sidebar-item ${state.filters.chapter === 'all' ? 'is-active' : ''}">
+    <button class="sidebar-item ${allChaptersSelected() ? 'is-active' : ''}">
       <span>All chapters</span>
       <span class="sidebar-item__count">${QUESTIONS.length}</span>
     </button>
@@ -1825,18 +1953,29 @@ function closeConfirm() {
    EVENT HANDLERS
    ============================================================ */
 function handleClick(e) {
-  const target = e.target.closest("[data-action], [data-chapter], [data-type-toggle], [data-difficulty-toggle], [data-mode], [data-lib-filter], [data-opt]");
+  const target = e.target.closest("[data-action], [data-chapter], [data-preset], [data-type-toggle], [data-difficulty-toggle], [data-mode], [data-lib-filter], [data-opt]");
   if (!target) return;
 
-  // Chapter selection
+  // Chapter selection — toggle in/out of the multi-select set
   if (target.dataset.chapter !== undefined) {
-    state.filters.chapter = target.dataset.chapter === "all" ? "all" : parseInt(target.dataset.chapter);
-    // If "all chapters" selected, default to shuffle mode if currently in study mode
-    if (state.filters.chapter === "all" && state.filters.mode === "study") {
-      state.filters.mode = "shuffle";
-    }
+    const ch = parseInt(target.dataset.chapter);
+    const arr = state.filters.chapters;
+    const i = arr.indexOf(ch);
+    if (i >= 0) arr.splice(i, 1);
+    else arr.push(ch);
     saveState();
     renderSetup();
+    return;
+  }
+
+  // Quick-pick preset — select exactly that preset's chapters
+  if (target.dataset.preset) {
+    const preset = PRESETS.find(p => p.id === target.dataset.preset);
+    if (preset) {
+      state.filters.chapters = preset.chapters.slice();
+      saveState();
+      renderSetup();
+    }
     return;
   }
 
@@ -1904,6 +2043,16 @@ function handleClick(e) {
       showView("setup");
       renderSetup();
       break;
+    case "select-all-chapters":
+      state.filters.chapters = availableChapters();
+      saveState();
+      renderSetup();
+      break;
+    case "clear-chapters":
+      state.filters.chapters = [];
+      saveState();
+      renderSetup();
+      break;
     case "toggle-chapter": {
       const card = target.closest(".lib-chapter");
       card.classList.toggle("is-open");
@@ -1960,7 +2109,7 @@ function handleClick(e) {
       break;
     case "review-wrong":
       state.filters.mode = "review";
-      state.filters.chapter = "all";
+      state.filters.chapters = availableChapters();
       state.filters.types = ["mc", "tf"];
       state.filters.difficulties = ["Easy", "Medium", "Hard"];
       saveState();
